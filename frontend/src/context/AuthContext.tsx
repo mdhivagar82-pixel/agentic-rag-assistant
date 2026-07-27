@@ -28,7 +28,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // Safety timer to prevent infinite black/loading screen
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(timer);
       setCurrentUser(user);
       if (user) {
         try {
@@ -44,7 +50,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, pass: string) => {
