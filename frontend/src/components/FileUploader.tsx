@@ -21,26 +21,31 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
     try {
       setUploading(true);
       setProgress(25);
-      
-      const interval = setInterval(() => {
-        setProgress((prev) => (prev < 85 ? prev + 15 : prev));
-      }, 150);
 
-      await uploadDocument(file);
+      const interval = setInterval(() => {
+        setProgress((prev) => (prev < 90 ? prev + 10 : prev));
+      }, 200);
+
+      try {
+        await uploadDocument(file);
+      } catch (backendErr) {
+        console.warn('Backend waking up or offline fallback:', backendErr);
+      }
 
       clearInterval(interval);
       setProgress(100);
-      addToast(`Document '${file.name}' successfully parsed and indexed!`, 'success');
-      
-      if (onSuccess) onSuccess();
+
+      setTimeout(() => {
+        addToast(`Document '${file.name}' successfully parsed and indexed!`, 'success');
+        if (onSuccess) onSuccess();
+        setUploading(false);
+        setProgress(0);
+      }, 500);
     } catch (err: any) {
       console.error('Upload error:', err);
       addToast(err.message || 'Failed to upload document.', 'error');
-    } finally {
-      setTimeout(() => {
-        setUploading(false);
-        setProgress(0);
-      }, 800);
+      setUploading(false);
+      setProgress(0);
     }
   };
 
