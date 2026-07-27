@@ -27,10 +27,10 @@ app = FastAPI(
 # GZip Compression Middleware (Minimum size: 1000 bytes)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# CORS Middleware
+# CORS Middleware - Support all client domains including Vercel & localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.get_cors_origins(),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
