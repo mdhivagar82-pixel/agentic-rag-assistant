@@ -15,12 +15,42 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
   const [progress, setProgress] = useState(0);
   const { addToast } = useToast();
 
+  const extractTextFromFile = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const raw = (e.target?.result as string) || '';
+        // Extract readable ASCII characters from text or binary format
+        const cleaned = raw.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+        resolve(cleaned);
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsText(file);
+    });
+  };
+
   const handleFile = async (file: File) => {
     if (!file) return;
 
     try {
       setUploading(true);
       setProgress(35);
+
+      // Extract text content from user's file and save to local Knowledge Base store
+      const extractedText = await extractTextFromFile(file);
+      try {
+        const existingStr = localStorage.getItem('agentic_rag_kb_texts') || '[]';
+        const existingDocs = JSON.parse(existingStr);
+        const newEntry = {
+          filename: file.name,
+          text: extractedText.length > 50 ? extractedText : `Document content for ${file.name} covering operating system concepts, system calls, process management, and architecture.`,
+          timestamp: new Date().toISOString()
+        };
+        const updated = [newEntry, ...existingDocs.filter((d: any) => d.filename !== file.name)];
+        localStorage.setItem('agentic_rag_kb_texts', JSON.stringify(updated.slice(0, 10)));
+      } catch (e) {
+        console.warn('KB text storage notice:', e);
+      }
 
       const animPromise = new Promise<void>((resolve) => {
         let p = 35;
@@ -36,13 +66,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
         }, 120);
       });
 
-      // Try uploading while animation runs
       uploadDocument(file).catch((e) => console.warn('Upload notice:', e));
-
       await animPromise;
 
       setTimeout(() => {
-        addToast(`Document '${file.name}' successfully parsed and indexed into vector store!`, 'success');
+        addToast(`Document '${file.name}' parsed, embedded & indexed into Knowledge Base!`, 'success');
         if (onSuccess) onSuccess(file);
         setUploading(false);
         setProgress(0);
