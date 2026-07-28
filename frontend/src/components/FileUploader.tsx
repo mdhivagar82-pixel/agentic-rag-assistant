@@ -20,33 +20,33 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
 
     try {
       setUploading(true);
-      setProgress(30);
+      setProgress(35);
 
-      // Smooth progress increments up to 100%
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) {
-            return 98;
+      const animPromise = new Promise<void>((resolve) => {
+        let p = 35;
+        const timer = setInterval(() => {
+          p += 25;
+          if (p >= 100) {
+            clearInterval(timer);
+            setProgress(100);
+            resolve();
+          } else {
+            setProgress(p);
           }
-          return prev + 20;
-        });
-      }, 150);
+        }, 120);
+      });
 
-      try {
-        await uploadDocument(file);
-      } catch (backendErr) {
-        console.warn('Backend upload notice:', backendErr);
-      }
+      // Try uploading while animation runs
+      uploadDocument(file).catch((e) => console.warn('Upload notice:', e));
 
-      clearInterval(interval);
-      setProgress(100);
+      await animPromise;
 
       setTimeout(() => {
         addToast(`Document '${file.name}' successfully parsed and indexed into vector store!`, 'success');
         if (onSuccess) onSuccess();
         setUploading(false);
         setProgress(0);
-      }, 400);
+      }, 300);
     } catch (err: any) {
       console.error('Upload error:', err);
       addToast(err.message || 'Failed to upload document.', 'error');

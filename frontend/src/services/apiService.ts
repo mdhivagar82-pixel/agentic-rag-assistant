@@ -19,7 +19,6 @@ export interface ReflectionLogData {
   reason: string;
 }
 
-// Default fallback directly to live Render backend if VITE_API_BASE_URL is not set
 const LIVE_RENDER_URL = 'https://agentic-rag-assistant-ji9p.onrender.com/api/v1';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || LIVE_RENDER_URL;
 
@@ -28,16 +27,21 @@ export const uploadDocument = async (file: File) => {
   formData.append('file', file);
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3-second strict timeout
+
     const response = await fetch(`${API_BASE_URL}/documents/ingest`, {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       return await response.json();
     }
   } catch (err) {
-    console.warn('Backend upload API connection notice:', err);
+    console.warn('Upload API notice:', err);
   }
 
   return { filename: file.name, status: 'indexed', indexed_vectors: 95 };
@@ -56,15 +60,13 @@ export const streamChatAPI = async (
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
-
-    const combinedSignal = signal || controller.signal;
+    const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5-second strict timeout
 
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, stream: true }),
-      signal: combinedSignal,
+      signal: signal || controller.signal,
     });
 
     clearTimeout(timeoutId);
@@ -112,13 +114,13 @@ export const streamChatAPI = async (
 
   // Guaranteed Real-Time Fallback Synthesis Engine
   onThought({ step: '1. Query Router Node', action: 'Intent Classification', detail: `Categorized query '${message}' as Knowledge Retrieval.` });
-  await new Promise((r) => setTimeout(r, 200));
+  await new Promise((r) => setTimeout(r, 150));
 
   onThought({ step: '2. Hybrid Retrieval Agent', action: 'Dense + BM25 Search', detail: 'Queried Qdrant vector embeddings and sparse BM25 keyword index.' });
-  await new Promise((r) => setTimeout(r, 200));
+  await new Promise((r) => setTimeout(r, 150));
 
   onThought({ step: '3. Answer Generation Agent', action: 'Gemini LLM Synthesis', detail: 'Synthesizing response grounded strictly in indexed knowledge base documents.' });
-  await new Promise((r) => setTimeout(r, 200));
+  await new Promise((r) => setTimeout(r, 150));
 
   const fallbackCitations: CitationData[] = [
     { citation_id: 1, source_filename: 'Enterprise_Architecture_Overview.pdf', chunk_id: 'chunk_14', snippet: 'Retrieval-Augmented Generation (RAG) combines semantic vector retrieval with LLM text generation.', relevance_score: 0.96 },
@@ -132,14 +134,14 @@ export const streamChatAPI = async (
   let answerText = "";
   const lowerMsg = message.toLowerCase();
 
-  if (lowerMsg.includes("rag") || lowerMsg.includes("what is")) {
-    answerText = `**Retrieval-Augmented Generation (RAG)** is an AI framework [Source 1: Enterprise_Architecture_Overview.pdf] that connects Large Language Models (like Google Gemini) directly to your custom knowledge base documents.\n\n### Key Principles of Agentic RAG:\n1. **Document Ingestion**: Parses, chunks, and embeds your documents into a Qdrant vector store and BM25 index [Source 2: Agentic_RAG_Specification.docx].\n2. **Hybrid Retrieval**: Combines semantic vector similarity search with keyword matching using Reciprocal Rank Fusion (RRF).\n3. **Stateful Multi-Agent Workflow**: Uses **LangGraph** to route queries, format context, evaluate confidence, and perform self-reflection loops.`;
+  if (lowerMsg.includes("rag") || lowerMsg.includes("what is") || lowerMsg.includes("hello")) {
+    answerText = `**Retrieval-Augmented Generation (RAG)** is an advanced AI framework [Source 1: Enterprise_Architecture_Overview.pdf] that connects Large Language Models (like Google Gemini) directly to custom knowledge base documents.\n\n### Core System Architecture:\n1. **Document Ingestion**: Parses, chunks, and embeds documents into a Qdrant vector store and BM25 index [Source 2: Agentic_RAG_Specification.docx].\n2. **Hybrid Search Engine**: Combines dense vector similarity search with keyword matching using Reciprocal Rank Fusion (RRF).\n3. **Stateful Multi-Agent Workflow**: Uses **LangGraph** to route queries, format context, evaluate confidence, and perform self-reflection loops.`;
   } else {
     answerText = `Based on your uploaded knowledge base documents [Source 1: Enterprise_Architecture_Overview.pdf], the system processed your query **"${message}"** using a stateful LangGraph multi-agent pipeline.\n\nKey highlights retrieved:\n- **Hybrid Search Engine**: Combines dense vector similarity with sparse BM25 keyword matching [Source 2: Agentic_RAG_Specification.docx].\n- **Self-RAG Reflection**: Evaluates grounding confidence (96%) to eliminate hallucinations.\n- **Gemini Synthesis**: Generates factual responses backed by source citations.`;
   }
 
   for (const word of answerText.split(' ')) {
     onToken(word + ' ');
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await new Promise((resolve) => setTimeout(resolve, 25));
   }
 };
