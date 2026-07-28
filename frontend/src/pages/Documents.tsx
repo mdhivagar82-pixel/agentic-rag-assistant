@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Search, Trash2, CheckCircle2 } from 'lucide-react';
 import { FileUploader } from '../components/FileUploader';
 import { useToast } from '../context/ToastContext';
@@ -13,19 +13,55 @@ interface DocumentItem {
   chunks: number;
 }
 
+const INITIAL_DOCS: DocumentItem[] = [
+  { id: 'doc_1', name: 'Enterprise_Architecture_Overview.pdf', size: '2.4 MB', type: 'PDF', uploadedAt: '2026-07-26', status: 'indexed', chunks: 142 },
+  { id: 'doc_2', name: 'Agentic_RAG_Specification.docx', size: '1.1 MB', type: 'DOCX', uploadedAt: '2026-07-26', status: 'indexed', chunks: 86 },
+  { id: 'doc_3', name: 'API_Gateway_Guide.md', size: '450 KB', type: 'Markdown', uploadedAt: '2026-07-27', status: 'indexed', chunks: 34 },
+];
+
 export const Documents: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [documents, setDocuments] = useState<DocumentItem[]>([
-    { id: 'doc_1', name: 'Enterprise_Architecture_Overview.pdf', size: '2.4 MB', type: 'PDF', uploadedAt: '2026-07-26', status: 'indexed', chunks: 142 },
-    { id: 'doc_2', name: 'Agentic_RAG_Specification.docx', size: '1.1 MB', type: 'DOCX', uploadedAt: '2026-07-26', status: 'indexed', chunks: 86 },
-    { id: 'doc_3', name: 'API_Gateway_Guide.md', size: '450 KB', type: 'Markdown', uploadedAt: '2026-07-27', status: 'indexed', chunks: 34 },
-  ]);
+  const [documents, setDocuments] = useState<DocumentItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('agentic_rag_documents');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('LocalStorage document load error:', e);
+    }
+    return INITIAL_DOCS;
+  });
 
   const { addToast } = useToast();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('agentic_rag_documents', JSON.stringify(documents));
+    } catch (e) {
+      console.warn('LocalStorage document save error:', e);
+    }
+  }, [documents]);
 
   const handleDelete = (id: string, name: string) => {
     setDocuments((prev) => prev.filter((d) => d.id !== id));
     addToast(`Document '${name}' removed from knowledge base index.`, 'info');
+  };
+
+  const handleUploadSuccess = (file?: File) => {
+    const fileName = file ? file.name : 'Newly_Uploaded_Knowledge_Doc.pdf';
+    const ext = fileName.split('.').pop()?.toUpperCase() || 'PDF';
+    const sizeStr = file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '1.8 MB';
+
+    const newDoc: DocumentItem = {
+      id: `doc_${Date.now()}`,
+      name: fileName,
+      size: sizeStr,
+      type: ext,
+      uploadedAt: new Date().toISOString().split('T')[0],
+      status: 'indexed',
+      chunks: Math.floor(Math.random() * 60) + 40
+    };
+
+    setDocuments((prev) => [newDoc, ...prev]);
   };
 
   const filteredDocs = documents.filter((d) =>
@@ -46,18 +82,7 @@ export const Documents: React.FC = () => {
       </div>
 
       {/* File Uploader */}
-      <FileUploader onSuccess={() => {
-        const newDoc: DocumentItem = {
-          id: `doc_${Date.now()}`,
-          name: 'Newly_Uploaded_Knowledge_Doc.pdf',
-          size: '1.8 MB',
-          type: 'PDF',
-          uploadedAt: new Date().toISOString().split('T')[0],
-          status: 'indexed',
-          chunks: 95
-        };
-        setDocuments((prev) => [newDoc, ...prev]);
-      }} />
+      <FileUploader onSuccess={handleUploadSuccess} />
 
       {/* Search & Filter Bar */}
       <div className="glass-panel" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>

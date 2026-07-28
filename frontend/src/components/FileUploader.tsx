@@ -5,7 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { ProgressBar } from './ProgressBar';
 
 interface FileUploaderProps {
-  onSuccess?: () => void;
+  onSuccess?: (file: File) => void;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
@@ -43,7 +43,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onSuccess }) => {
 
       setTimeout(() => {
         addToast(`Document '${file.name}' successfully parsed and indexed into vector store!`, 'success');
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(file);
         setUploading(false);
         setProgress(0);
       }, 300);
